@@ -1,0 +1,27 @@
+# Dataset - never commit
+data/
+
+# Pretrained / trained model weights
+pretrained_pth/
+model_pth/
+checkpoints/
+*.pth
+*.pt
+*.ckpt
+
+# Generated segmentation maps
+result_map/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Local environments
+.venv/
+venv/
+env/
+
+# OS files
+.DS_Store
+Thumbs.db

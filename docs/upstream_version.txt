@@ -1,0 +1,19 @@
+Official G-CASCADE repository:
+https://github.com/SLDGroup/G-CASCADE
+
+Baseline commit:
+08d76880027bfe14ed79def1eea3d8a4957fbab6
+
+Baseline tag:
+upstream-baseline
+
+Project:
+EN3160 G-CASCADE Reproduction
+
+Abu branch:
+Official PVT-GCASCADE polyp segmentation baseline reproduction.
+
+Important:
+The original architecture and experimental protocol should be preserved
+during the baseline reproduction unless an engineering compatibility
+change is unavoidable.
