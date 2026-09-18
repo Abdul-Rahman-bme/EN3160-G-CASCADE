@@ -11,8 +11,7 @@ from torch.autograd import Variable
 
 import matplotlib.pyplot as plt
 
-from lib.networks import PVT_GCASCADE_SA_Grapher1st_UpConv2, PVT_GCASCADE_SA_Cat_Grapher1st_UpConv2, DoubleMaxViT_S_GCASCADE_SA_Cat_Grapher1st_UpConv2_C, DoubleMaxViT_S_GCASCADE_SA_Grapher1st_UpConv2_C
-
+from lib.networks import PVT_GCASCADE, MERIT_GCASCADE
 from utils.dataloader import get_loader, test_dataset
 from utils.utils import clip_gradient, adjust_lr, AvgMeter
 from utils.utils import powerset
@@ -23,7 +22,6 @@ from torchsummaryX import summary
 
 l = [0, 1, 2, 3]
 ss = [x for x in powerset(l)]
-ss = [[0],[1],[2],[3]
 print(ss)
         
 def structure_loss(pred, mask):
@@ -224,13 +222,13 @@ if __name__ == '__main__':
     # ---- build models ----
     #torch.cuda.set_device(0)  # set your gpu device
     if opt.encoder=='PVT':
-        model = PVT_GCASCADE(n_class=1, img_size=opt.img_size, k=11, padding=5, conv='mr', act='gelu', skip_aggregation=opt.skip_aggregation)
+        model = PVT_GCASCADE(n_class=1, img_size=opt.img_size, k=11, padding=5, conv='mr', gcb_act='gelu', skip_aggregation=opt.skip_aggregation)
     elif opt.encoder=='MERIT':
-        model = MERIT_GCASCADE(n_class=1, img_size_s1=(256,256), img_size_s2=(224,224), k=11, padding=5, conv='mr', act='gelu', skip_aggregation=opt.skip_aggregation)
+        model = MERIT_GCASCADE(n_class=1, img_size_s1=(256,256), img_size_s2=(224,224), k=11, padding=5, conv='mr', gcb_act='gelu', skip_aggregation=opt.skip_aggregation)
     else:
         print('Implementation not found for this encoder')
 
-    print('Model %s created' % (encoder+'-GCASCADE: '))
+    print('Model %s created' % (opt.encoder+'-GCASCADE: '))
     
     model.cuda()
     macs, params = get_model_complexity_info(model, (3, opt.img_size, opt.img_size), as_strings=True,
