@@ -9,20 +9,21 @@ import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-import matplotlib.pyplot as plt
-
 from lib.networks import PVT_GCASCADE, MERIT_GCASCADE
 from utils.dataloader import get_loader, test_dataset
 from utils.utils import clip_gradient, adjust_lr, AvgMeter
 from utils.utils import powerset
+from utils.training_checkpoint import load_training_checkpoint, save_training_checkpoint
 
 from ptflops import get_model_complexity_info
-from torchsummaryX import summary
 
 
 l = [0, 1, 2, 3]
 ss = [x for x in powerset(l)]
 print(ss)
+SIZE_RATES = [0.75, 1.0, 1.25]
+WEIGHT_DECAY = 1e-4
+STRUCTURE_LOSS_ID = 'weighted_bce_plus_weighted_iou_v1_all_15_decoder_combinations'
         
 def structure_loss(pred, mask):
     weit = 1 + 5 * torch.abs(F.avg_pool2d(mask, kernel_size=31, stride=1, padding=15) - mask)
@@ -74,15 +75,23 @@ def test(model, path, dataset):
 
     return DSC / num1, num1
 
-def train(train_loader, model, optimizer, epoch, test_path, model_name = 'PVT-GCASCADE'):
+def train(
+    train_loader,
+    model,
+    optimizer,
+    epoch,
+    test_path,
+    model_name='PVT-GCASCADE',
+    resume_checkpoint_path=None,
+    resume_config=None,
+):
     model.train()
     global best
     global total_train_time
     time_before_epoch_start = time.time()
-    size_rates = [0.75, 1, 1.25] 
     loss_record = AvgMeter()
     for i, pack in enumerate(train_loader, start=1):
-        for rate in size_rates:
+        for rate in SIZE_RATES:
             optimizer.zero_grad()
             
             # ---- data prepare ----
@@ -156,12 +165,75 @@ def train(train_loader, model, optimizer, epoch, test_path, model_name = 'PVT-GC
             logging.info('##################### Dice score improved from {} to {}'.format(best, meandice))
             best = meandice
             torch.save(model.state_dict(), save_path + '' + model_name + '-best.pth')
+
+    # This is deliberately last: it represents a completed epoch whose validation
+    # result, best score, model-only files, optimizer, and RNG state agree.
+    if resume_checkpoint_path is not None:
+        save_training_checkpoint(
+            resume_checkpoint_path,
+            model,
+            optimizer,
+            epoch,
+            best,
+            total_train_time,
+            resume_config,
+        )
+        print('Saved resumable checkpoint: {}'.format(resume_checkpoint_path))
+        logging.info('Saved resumable checkpoint: {}'.format(resume_checkpoint_path))
+
+
+def resume_config(opt):
+    """Settings that must match for a faithful epoch-boundary continuation."""
+    return {
+        'architecture': '{}_GCASCADE'.format(opt.encoder),
+        'encoder': opt.encoder,
+        'skip_aggregation': opt.skip_aggregation,
+        'n_class': 1,
+        'graph_k': 11,
+        'graph_padding': 5,
+        'graph_convolution': 'mr',
+        'graph_activation': 'gelu',
+        'optimizer': opt.optimizer,
+        'learning_rate': float(opt.lr),
+        'weight_decay': WEIGHT_DECAY,
+        'batch_size': int(opt.batchsize),
+        'image_size': int(opt.img_size),
+        'gradient_clip': float(opt.clip),
+        'decay_rate': float(opt.decay_rate),
+        'decay_epoch': int(opt.decay_epoch),
+        'augmentation': str(opt.augmentation),
+        'train_path': os.path.abspath(os.path.normpath(opt.train_path)),
+        'test_path': os.path.abspath(os.path.normpath(opt.test_path)),
+        'loss': STRUCTURE_LOSS_ID,
+        'decoder_output_combinations': 15,
+        'multi_scale_rates': list(SIZE_RATES),
+    }
+
+
+def ensure_fresh_outputs_do_not_exist(
+    save_path, model_name, checkpoint_path, log_path=None
+):
+    outputs = [
+        os.path.join(save_path, model_name + '-best.pth'),
+        os.path.join(save_path, model_name + '-last.pth'),
+    ]
+    if checkpoint_path is not None:
+        outputs.append(checkpoint_path)
+    if log_path is not None:
+        outputs.append(log_path)
+    existing = [path for path in outputs if os.path.exists(path)]
+    if existing:
+        raise FileExistsError(
+            'Fresh training would overwrite existing output(s): {}. '
+            'Choose a new --experiment_name/--train_save path, or use --resume.'
+            .format(existing)
+        )
     
 if __name__ == '__main__':
     dict_plot = {'CVC-ClinicDB':[], 'Kvasir':[], 'CVC-ColonDB':[], 'CVC-300':[],'test':[]}
     name = ['CVC-ClinicDB', 'Kvasir', 'CVC-ColonDB', 'CVC-300', 'test']
     ##################model_name#############################
-    model_name = 'Polyp_PVT_GCASCADE_img_size352bs4_Run1'
+    default_model_name = 'Polyp_PVT_GCASCADE_img_size352bs4_Run1'
     
     #current_time = time.strftime("%H%M%S")
     #print("The current time is", current_time)
@@ -177,7 +249,8 @@ if __name__ == '__main__':
                         default='additive', help='Type of skip-aggregation: additive or concatenation')
 
     parser.add_argument('--epoch', type=int,
-                        default=200, help='epoch number')
+                        default=200,
+                        help='exclusive epoch limit; 200 runs epochs 1 through 199')
 
     parser.add_argument('--lr', type=float,
                         default=1e-4, help='learning rate')
@@ -211,11 +284,36 @@ if __name__ == '__main__':
                         default='./data/polyp/TestDataset/',
                         help='path to testing Kvasir dataset')
 
-    parser.add_argument('--train_save', type=str,
-                        default='./model_pth/'+model_name+'/')
+    parser.add_argument('--experiment_name', type=str,
+                        default=default_model_name,
+                        help='model filename prefix and default output-directory name')
+
+    parser.add_argument('--train_save', type=str, default=None,
+                        help='output directory (default: ./model_pth/<experiment_name>/)')
+
+    parser.add_argument('--resume', type=str, default=None,
+                        help='full-state checkpoint to resume from')
+
+    parser.add_argument('--save_resume_checkpoint', type=str, default=None,
+                        help='full-state checkpoint path written after each completed epoch; '
+                             'defaults to --resume when resuming')
 
     opt = parser.parse_args()
-    logging.basicConfig(filename='train_log_'+model_name+'.log',
+    model_name = opt.experiment_name
+    if opt.train_save is None:
+        opt.train_save = os.path.join('.', 'model_pth', model_name) + os.sep
+    elif not opt.train_save.endswith(('/', '\\')):
+        opt.train_save += os.sep
+    if opt.resume is not None and opt.save_resume_checkpoint is None:
+        opt.save_resume_checkpoint = opt.resume
+    log_path = os.path.join(opt.train_save, 'train.log')
+    if opt.resume is None:
+        ensure_fresh_outputs_do_not_exist(
+            opt.train_save, model_name, opt.save_resume_checkpoint, log_path
+        )
+    os.makedirs(opt.train_save, exist_ok=True)
+
+    logging.basicConfig(filename=log_path,
                         format='[%(asctime)s-%(filename)s-%(levelname)s:%(message)s]',
                         level=logging.INFO, filemode='a', datefmt='%Y-%m-%d %I:%M:%S %p')
 
@@ -226,7 +324,7 @@ if __name__ == '__main__':
     elif opt.encoder=='MERIT':
         model = MERIT_GCASCADE(n_class=1, img_size_s1=(256,256), img_size_s2=(224,224), k=11, padding=5, conv='mr', gcb_act='gelu', skip_aggregation=opt.skip_aggregation)
     else:
-        print('Implementation not found for this encoder')
+        raise ValueError('Implementation not found for encoder: {}'.format(opt.encoder))
 
     print('Model %s created' % (opt.encoder+'-GCASCADE: '))
     
@@ -242,9 +340,11 @@ if __name__ == '__main__':
     
 
     if opt.optimizer == 'AdamW':
-        optimizer = torch.optim.AdamW(params, opt.lr, weight_decay=1e-4)
+        optimizer = torch.optim.AdamW(params, opt.lr, weight_decay=WEIGHT_DECAY)
+    elif opt.optimizer == 'SGD':
+        optimizer = torch.optim.SGD(params, opt.lr, weight_decay=WEIGHT_DECAY, momentum=0.9)
     else:
-        optimizer = torch.optim.SGD(params, opt.lr, weight_decay=1e-4, momentum=0.9)
+        raise ValueError('Unsupported optimizer: {}'.format(opt.optimizer))
 
     print(optimizer)
     image_root = '{}/images/'.format(opt.train_path)
@@ -256,9 +356,45 @@ if __name__ == '__main__':
 
     print("#" * 20, "Start Training", "#" * 20)
     total_train_time = 0
+    best = 0
+    start_epoch = 1
+    checkpoint_config = resume_config(opt)
 
-    for epoch in range(1, opt.epoch):
+    # Restore only after model, optimizer, profiling, and DataLoader construction.
+    # The next DataLoader iterator will therefore consume the restored RNG state.
+    if opt.resume is not None:
+        metadata = load_training_checkpoint(
+            opt.resume, model, optimizer, expected_config=checkpoint_config
+        )
+        start_epoch = metadata['epoch'] + 1
+        best = metadata['best_dice']
+        total_train_time = metadata['total_train_time']
+        print(
+            'Resumed completed epoch {} (next epoch {}, best Dice {}, total train time {}).'
+            .format(metadata['epoch'], start_epoch, best, total_train_time)
+        )
+        logging.info(
+            'Resumed completed epoch %s; next epoch %s; best Dice %s; total train time %s',
+            metadata['epoch'], start_epoch, best, total_train_time
+        )
+
+    last_completed_epoch = start_epoch - 1
+    for epoch in range(start_epoch, opt.epoch):
         adjust_lr(optimizer, opt.lr, epoch, opt.decay_rate, opt.decay_epoch)
-        train(train_loader, model, optimizer, epoch, opt.test_path, model_name = model_name)
-    print('avg train time: '+ str(total_train_time/(opt.epoch-1)))
-    logging.info('avg train time: '+ str(total_train_time/(opt.epoch-1)))
+        train(
+            train_loader,
+            model,
+            optimizer,
+            epoch,
+            opt.test_path,
+            model_name=model_name,
+            resume_checkpoint_path=opt.save_resume_checkpoint,
+            resume_config=checkpoint_config,
+        )
+        last_completed_epoch = epoch
+    if last_completed_epoch > 0:
+        average_train_time = total_train_time / last_completed_epoch
+        print('avg train time: '+ str(average_train_time))
+        logging.info('avg train time: '+ str(average_train_time))
+    else:
+        print('No epochs were completed.')

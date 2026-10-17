@@ -2,20 +2,6 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from medpy import metric
-from scipy.ndimage import zoom
-import seaborn as sns
-from PIL import Image 
-import matplotlib.pyplot as plt
-from segmentation_mask_overlay import overlay_masks
-import matplotlib.colors as mcolors
-
-import SimpleITK as sitk
-import pandas as pd
-
-
-from thop import profile
-from thop import clever_format
 
 def powerset(seq):
     """
@@ -82,6 +68,8 @@ def CalParams(model, input_tensor):
     :param input_tensor:
     :return:
     """
+    from thop import clever_format, profile
+
     flops, params = profile(model, inputs=(input_tensor,))
     flops, params = clever_format([flops, params], "%.3f")
     print('[Statistics Information]\nFLOPs: {}\nParams: {}'.format(flops, params))
@@ -143,6 +131,8 @@ class DiceLoss(nn.Module):
 
 
 def calculate_metric_percase(pred, gt):
+    from medpy import metric
+
     pred[pred > 0] = 1
     gt[gt > 0] = 1
     if pred.sum() > 0 and gt.sum()>0:
@@ -157,6 +147,8 @@ def calculate_metric_percase(pred, gt):
         return 0, 0, 0, 0
 
 def calculate_dice_percase(pred, gt):
+    from medpy import metric
+
     pred[pred > 0] = 1
     gt[gt > 0] = 1
     if pred.sum() > 0 and gt.sum()>0:
@@ -169,6 +161,11 @@ def calculate_dice_percase(pred, gt):
 
 
 def test_single_volume(image, label, net, classes, patch_size=[256, 256], test_save_path=None, case=None, z_spacing=1, class_names=None):
+    import matplotlib.colors as mcolors
+    import SimpleITK as sitk
+    from scipy.ndimage import zoom
+    from segmentation_mask_overlay import overlay_masks
+
     image, label = image.squeeze(0).cpu().detach().numpy(), label.squeeze(0).cpu().detach().numpy()
     if class_names==None:
         mask_labels = np.arange(1,classes)
@@ -244,6 +241,8 @@ def test_single_volume(image, label, net, classes, patch_size=[256, 256], test_s
 
 
 def val_single_volume(image, label, net, classes, patch_size=[256, 256], test_save_path=None, case=None, z_spacing=1):
+    from scipy.ndimage import zoom
+
     image, label = image.squeeze(0).cpu().detach().numpy(), label.squeeze(0).cpu().detach().numpy()
 
     if len(image.shape) == 3:

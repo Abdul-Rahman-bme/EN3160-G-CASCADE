@@ -11,6 +11,13 @@ checkpoints/
 
 # Generated segmentation maps
 result_map/
+experiments/
+evaluation_results/
+demo_outputs/
+
+# Generated training logs and atomic checkpoint temporaries
+*.log
+*.pth.*.tmp
 
 # Python cache
 __pycache__/

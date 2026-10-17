@@ -8,8 +8,6 @@ import math
 from PIL import Image
 import cv2
 import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
 import scipy.misc 
 
 from lib.gcn_lib import Grapher as GCB 
