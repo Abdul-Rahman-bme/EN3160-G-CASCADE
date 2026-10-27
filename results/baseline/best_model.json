@@ -1,9 +1,9 @@
 {
   "experiment": "Polyp_PVT_GCASCADE_img_size352bs4_Run3",
   "status": "in_progress",
-  "completed_epoch": 50,
+  "completed_epoch": 55,
   "target_completed_epoch": 199,
-  "completed_sessions": 10,
+  "completed_sessions": 11,
   "best_epoch": 19,
   "best_weighted_validation_dice": 0.849586710963455,
   "best_epoch_dataset_dice": {
@@ -20,8 +20,8 @@
   },
   "local_best_model_path": "experiments/official_run03/models/Polyp_PVT_GCASCADE_img_size352bs4_Run3-best.pth",
   "local_resume_checkpoint_path": "experiments/official_run03/checkpoints/training-resume.pth",
-  "checkpoint_timestamp": "2026-10-25T16:50:35.192502+05:30",
-  "cumulative_training_seconds": 378914.9185459614,
+  "checkpoint_timestamp": "2026-10-26T19:15:59.286112+05:30",
+  "cumulative_training_seconds": 416018.15771865845,
   "training_source_commit": "a9b3b240172b53943f50f46f806954f9d75ee870",
   "weights_stored_in_git": false,
   "metric_note": "These datasets are used for best-checkpoint selection. Scores are validation metrics, not independent final test results."

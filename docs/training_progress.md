@@ -3,12 +3,12 @@
 ## Current status
 
 - Experiment: `Polyp_PVT_GCASCADE_img_size352bs4_Run3`
-- Completed epochs: **50 / 199**
-- Completed sessions: **10 / 40**
+- Completed epochs: **55 / 199**
+- Completed sessions: **11 / 40**
 - Best validation epoch: **19**
 - Best weighted validation Dice: **0.849587**
-- Next session: **11, epochs 51-55**
-- Last saved checkpoint: `2026-10-25T16:50:35.192502+05:30`
+- Next session: **12, epochs 56-60**
+- Last saved checkpoint: `2026-10-26T19:15:59.286112+05:30`
 - Source commit: `a9b3b240172b53943f50f46f806954f9d75ee870`
 
 ## Session history
@@ -25,6 +25,7 @@
 | 8 | 36-40 | 19 | 0.849587 |
 | 9 | 41-45 | 19 | 0.849587 |
 | 10 | 46-50 | 19 | 0.849587 |
+| 11 | 51-55 | 19 | 0.849587 |
 
 ## Best epoch validation metrics
 
