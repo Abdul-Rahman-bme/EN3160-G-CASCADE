@@ -55,7 +55,7 @@
 - **These are validation scores, not independent final test results.**
 - Full epoch-level metrics are in `results/baseline/session_metrics.csv`.
 - Large weights and resumable checkpoints are excluded from ordinary Git.
-- The baseline remains in progress until epoch 199.
+- Baseline training was stopped early at epoch 90; the epoch-90 checkpoint remains resumable.
 
 ## Baseline training freeze
 
