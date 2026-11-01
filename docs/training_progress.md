@@ -3,12 +3,12 @@
 ## Current status
 
 - Experiment: `Polyp_PVT_GCASCADE_img_size352bs4_Run3`
-- Completed epochs: **85 / 199**
-- Completed sessions: **17 / 40**
+- Completed epochs: **90 / 199**
+- Completed sessions: **18 / 40**
 - Best validation epoch: **19**
 - Best weighted validation Dice: **0.849587**
-- Next session: **18, epochs 86-90**
-- Last saved checkpoint: `2026-10-31T10:58:01.348968+05:30`
+- Training status: **Stopped early after epoch 90**
+- Last saved checkpoint: `2026-11-01T11:27:33.581160+05:30`
 - Source commit: `a9b3b240172b53943f50f46f806954f9d75ee870`
 
 ## Session history
@@ -32,6 +32,7 @@
 | 15 | 71-75 | 19 | 0.849587 |
 | 16 | 76-80 | 19 | 0.849587 |
 | 17 | 81-85 | 19 | 0.849587 |
+| 18 | 86-90 | 19 | 0.849587 |
 
 ## Best epoch validation metrics
 
@@ -55,3 +56,13 @@
 - Full epoch-level metrics are in `results/baseline/session_metrics.csv`.
 - Large weights and resumable checkpoints are excluded from ordinary Git.
 - The baseline remains in progress until epoch 199.
+
+## Baseline training freeze
+
+- Training stopped voluntarily at epoch **90 / 199** after **18 sessions**, before the original target.
+- Best weighted validation Dice: **0.849586710963455**, from epoch **19**.
+- The locally saved best-model weights remain the selected model for evaluation and demonstration.
+- The epoch-90 resumable checkpoint and its metadata are preserved, allowing training to resume later.
+- **109 planned epochs were not completed.**
+- Training was stopped to prioritize final demonstration and code explanation; this is a partial reproduction, not a completed 199-epoch experiment.
+- The recorded Dice scores are checkpoint-selection validation metrics, not independent final test results.
