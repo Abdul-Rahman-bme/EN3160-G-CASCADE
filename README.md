@@ -71,6 +71,67 @@ are kept locally and are not committed to ordinary Git.
 [Training progress](docs/training_progress.md) ?
 [Baseline workflow](docs/baseline_workflow.md)
 
+## Interactive web dashboard
+
+The local Streamlit dashboard provides a browser-based
+demonstration using the saved PVT-GCASCADE model.
+
+Features:
+
+- Select one of four validation datasets.
+- Choose a test image from the dropdown.
+- Automatically load its paired ground-truth mask.
+- Upload a custom colonoscopy image and optional mask.
+- Perform real model inference using CUDA or CPU.
+- Compare the predicted mask, overlay and ground truth.
+- Show official and conventional per-image Dice and IoU.
+- Download the predicted binary mask and red overlay.
+
+### Launch the dashboard
+
+From the repository root, activate the `gcascade`
+Conda environment and install Streamlit if needed.
+
+```powershell
+conda activate gcascade
+python -m pip install streamlit
+python -m streamlit run .\\scripts\\web_demo_polyp.py
+```
+
+Open `http://localhost:8501` if the browser does not open
+automatically.
+
+The default model path is:
+
+`experiments/official_run03/models/Polyp_PVT_GCASCADE_img_size352bs4_Run3-best.pth`
+
+The validation dataset root is:
+
+`data/polyp/TestDataset`
+
+These files and datasets must be available locally.
+The model weights and medical images are not distributed
+through this repository.
+
+### Demonstration procedure
+
+1. Select **Choose from validation dataset**.
+2. Choose **CVC-ClinicDB** and image **171.png**.
+3. Click **Run segmentation**.
+4. Explain the predicted mask, red overlay and ground truth.
+5. Read the Dice and IoU values calculated for that image.
+6. Switch to **Upload an image** to demonstrate custom input.
+
+The displayed weighted Dice of **0.849587** is the
+previously verified aggregate validation result. Per-image
+Dice/IoU are calculated from the selected image when
+segmentation runs and ground truth is available.
+
+The original command-line/Tkinter demo remains available
+below as an alternative.
+
+---
+
 ## Run the live polyp segmentation demo
 
 On the prepared Windows machine, activate the existing
