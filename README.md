@@ -1,3 +1,180 @@
+# G-CASCADE ? EN3160 Computer Vision Reproduction
+
+A practical reproduction of **G-CASCADE: Efficient Cascaded Graph
+Convolutional Decoding for 2D Medical Image Segmentation** (WACV 2024).
+
+This project focuses on **binary polyp segmentation** using the
+**PVTv2-B2 encoder** and **G-CASCADE decoder with additive skip aggregation**.
+
+> **Reproduction status:** Training voluntarily stopped after
+> 90 of 199 planned completed epochs. The best validation
+> checkpoint was obtained at epoch 19. The saved model supports
+> live inference, mask visualization and reproducible evaluation.
+> This is a partial reproduction, not a completed 199-epoch run.
+
+## Reproduced results
+
+The following values are from the selected best model,
+evaluated on the same four datasets used for checkpoint selection.
+
+| Dataset | Images | Dice | IoU |
+|---|---:|---:|---:|
+| CVC-ClinicDB | 62 | 0.928477 | 0.880758 |
+| Kvasir | 100 | 0.916251 | 0.864641 |
+| CVC-ColonDB | 380 | 0.811656 | 0.729943 |
+| CVC-300 | 60 | 0.897185 | 0.831153 |
+| **Image-count-weighted** | **602** | **0.849587** | **See evaluation report** |
+
+**Important:** These are validation metrics from data used
+to select the best checkpoint. They are not independent
+held-out test performance estimates.
+
+Detailed metrics:
+[Evaluation results](results/baseline/final_evaluation_summary.csv)
+
+## Architecture and inference pipeline
+
+The architecture image from the original research repository
+is preserved in the original documentation below.
+
+```mermaid
+flowchart TD
+    A["Colonoscopy image"] --> B["Resize and normalize"]
+    B --> C["PVTv2-B2 encoder"]
+    C --> D["Four hierarchical feature maps"]
+    D --> E["G-CASCADE graph-based decoder"]
+    E --> F["Four segmentation heads"]
+    F --> G["Sum logits and resize"]
+    G --> H["Sigmoid, normalize, threshold"]
+    H --> I["Predicted polyp mask and overlay"]
+```
+
+## Experiment configuration
+
+| Setting | Reproduced setup |
+|---|---|
+| Encoder | PVTv2-B2 |
+| Decoder | G-CASCADE, additive aggregation |
+| Input image size | 352 ? 352 |
+| Batch size | 4 |
+| Optimizer | AdamW |
+| Learning rate | 0.0001 |
+| Weight decay | 0.0001 |
+| Completed training | 90 / 199 epochs |
+| Best checkpoint | Epoch 19 |
+| Best weighted validation Dice | 0.849586710963455 |
+| Resume checkpoint | Epoch 90 |
+
+The best weights, datasets and large resumable checkpoints
+are kept locally and are not committed to ordinary Git.
+
+[Training progress](docs/training_progress.md) ?
+[Baseline workflow](docs/baseline_workflow.md)
+
+## Run the live polyp segmentation demo
+
+On the prepared Windows machine, activate the existing
+`gcascade` Conda environment and open the repository root.
+
+The local best-model file is:
+
+`experiments/official_run03/models/Polyp_PVT_GCASCADE_img_size352bs4_Run3-best.pth`
+
+Run:
+
+```powershell
+conda activate gcascade
+
+python -m scripts.demo_polyp `
+    --checkpoint .\experiments\official_run03\models\Polyp_PVT_GCASCADE_img_size352bs4_Run3-best.pth `
+    --device cuda `
+    --test-size 352
+```
+
+Choose an endoscopy image from the file picker.
+
+To show **ground truth and per-image Dice/IoU**, also provide
+the corresponding image and mask paths:
+
+```powershell
+python -m scripts.demo_polyp `
+    --checkpoint .\experiments\official_run03\models\Polyp_PVT_GCASCADE_img_size352bs4_Run3-best.pth `
+    --image .\data\polyp\TestDataset\CVC-ClinicDB\images\100.png `
+    --ground-truth .\data\polyp\TestDataset\CVC-ClinicDB\masks\100.png `
+    --device cuda `
+    --test-size 352
+```
+
+The viewer displays input, evaluated input, predicted mask,
+red prediction overlay and ground truth.
+
+### Generate a saved comparison image
+
+Use the same command with an additional `--save-panel`
+argument pointing to a new output file. The demo will
+save the comparison panel rather than opening a window.
+
+The verified local demonstration panel is at:
+
+`experiments/official_run03/final_demo_evaluation/demo_comparison.png`
+
+This generated example is kept locally pending confirmation
+that the underlying dataset image may be redistributed.
+
+## Reproduce validation evaluation
+
+Ensure the original polyp datasets and the best-model
+checkpoint are available locally. From the repository root:
+
+```powershell
+python -m scripts.evaluate_polyp `
+    --checkpoint .\experiments\official_run03\models\Polyp_PVT_GCASCADE_img_size352bs4_Run3-best.pth `
+    --dataset-root .\data\polyp\TestDataset `
+    --output .\experiments\official_run03\recheck_evaluation `
+    --device cuda `
+    --test-size 352 `
+    --export-masks
+```
+
+Choose a new empty output directory for every evaluation.
+
+The script generates dataset summaries, per-image Dice/IoU,
+evaluation metadata and optional predicted mask images.
+
+## Code structure
+
+| File | Role |
+|---|---|
+| `train_polyp.py` | Training, structure loss, validation |
+| `lib/networks.py` | PVT-GCASCADE network |
+| `lib/decoders.py` | Decoder building blocks |
+| `scripts/demo_polyp.py` | Interactive segmentation viewer |
+| `scripts/evaluate_polyp.py` | Reproducible evaluation |
+| `utils/polyp_evaluation.py` | Inference and metric utilities |
+| `scripts/run_polyp_session.ps1` | Resumable five-epoch sessions |
+| `docs/final_demo.md` | Demo and evaluation instructions |
+
+The locally verified evaluation covers 602 images. The
+reproduction achieved a best image-count-weighted validation
+Dice of **0.849587**. No claim is made that it matches
+the original paper's complete experimental protocol.
+
+## Original research and attribution
+
+This repository is a fork of
+[SLDGroup/G-CASCADE](https://github.com/SLDGroup/G-CASCADE).
+
+Original paper: **Md Mostafijur Rahman and Radu Marculescu,
+G-CASCADE: Efficient Cascaded Graph Convolutional Decoding
+for 2D Medical Image Segmentation, WACV 2024.**
+
+The original README, installation instructions, architecture
+image, acknowledgements and citation follow below.
+
+---
+
+# Original G-CASCADE README
+
 # G-CASCADE
 
 Official Pytorch implementation of [G-CASCADE: Efficient Cascaded Graph Convolutional Decoding for 2D Medical Image Segmentation](https://openaccess.thecvf.com/content/WACV2024/html/Rahman_G-CASCADE_Efficient_Cascaded_Graph_Convolutional_Decoding_for_2D_Medical_Image_WACV_2024_paper.html) WACV 2024. [arxiv](https://arxiv.org/abs/2310.16175) [code](https://github.com/SLDGroup/G-CASCADE) 
